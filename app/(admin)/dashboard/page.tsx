@@ -55,6 +55,7 @@ export default async function DashboardPage() {
           <a className="quick-link" href="https://supabase.com/dashboard/project/vogcmwmwttaisxomxtbo" target="_blank" rel="noreferrer">Supabase Project</a>
           <a className="quick-link" href="https://expo.dev" target="_blank" rel="noreferrer">Expo Dashboard</a>
           <a className="quick-link" href="https://github.com/SudoQui" target="_blank" rel="noreferrer">GitHub</a>
+          <a className="quick-link" href="https://sudolabs.app" target="_blank" rel="noreferrer">SudoLabs</a>
         </div>
       </section>
     </>

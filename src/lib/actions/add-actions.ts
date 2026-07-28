@@ -24,6 +24,122 @@ async function assertSlugAvailable(table: "places" | "community_events", slug: s
   }
 }
 
+async function assertLinkedPlaceAvailable(linkedPlaceId: string | null | undefined) {
+  if (!linkedPlaceId) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("places")
+    .select("id")
+    .eq("id", linkedPlaceId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("Could not validate the linked MACT place.");
+  }
+
+  if (!data) {
+    throw new Error("Linked MACT place was not found.");
+  }
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateTimeLocal(date: Date) {
+  return [
+    date.getFullYear(),
+    padDatePart(date.getMonth() + 1),
+    padDatePart(date.getDate()),
+  ].join("-") + `T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function formatDateSlug(date: Date) {
+  return [
+    date.getFullYear(),
+    padDatePart(date.getMonth() + 1),
+    padDatePart(date.getDate()),
+  ].join("-");
+}
+
+function parseEventDate(value: string, fieldName: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${fieldName} must be a valid date and time.`);
+  }
+
+  return date;
+}
+
+function addOccurrenceInterval(date: Date, frequency: "daily" | "weekly" | "fortnightly" | "monthly", offset: number) {
+  const next = new Date(date);
+
+  if (frequency === "daily") {
+    next.setDate(next.getDate() + offset);
+  }
+
+  if (frequency === "weekly") {
+    next.setDate(next.getDate() + offset * 7);
+  }
+
+  if (frequency === "fortnightly") {
+    next.setDate(next.getDate() + offset * 14);
+  }
+
+  if (frequency === "monthly") {
+    next.setMonth(next.getMonth() + offset);
+  }
+
+  return next;
+}
+
+type EventInput = ReturnType<typeof addEventSchema.parse>;
+
+function buildEventRows(input: EventInput) {
+  const isRepeating = input.repeat_frequency !== "none" && input.repeat_count > 1;
+  const startsAt = isRepeating ? parseEventDate(input.starts_at, "Starts at") : null;
+  const endsAt = isRepeating && input.ends_at ? parseEventDate(input.ends_at, "Ends at") : null;
+  const durationMs = startsAt && endsAt ? endsAt.getTime() - startsAt.getTime() : null;
+
+  return Array.from({ length: input.repeat_count }, (_, index) => {
+    const occurrenceStart = startsAt && input.repeat_frequency !== "none"
+      ? addOccurrenceInterval(startsAt, input.repeat_frequency, index)
+      : null;
+    const occurrenceEnd = occurrenceStart && durationMs !== null
+      ? new Date(occurrenceStart.getTime() + durationMs)
+      : null;
+    const slug = isRepeating && occurrenceStart ? `${input.slug}-${formatDateSlug(occurrenceStart)}` : input.slug;
+
+    return {
+      title: input.title,
+      slug,
+      host_name: input.host_name ?? null,
+      event_type: input.event_type,
+      starts_at: occurrenceStart ? formatDateTimeLocal(occurrenceStart) : input.starts_at,
+      ends_at: occurrenceEnd ? formatDateTimeLocal(occurrenceEnd) : input.ends_at ?? null,
+      address: input.address ?? null,
+      suburb: input.suburb ?? null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      cost: input.cost ?? null,
+      registration_url: input.registration_url ?? null,
+      description: input.description || "",
+      is_active: input.is_active,
+      details_last_updated: input.details_last_updated ?? null,
+      linked_place_id: input.linked_place_id ?? null,
+      organizer_name: input.organizer_name,
+      location_name: input.location_name ?? null,
+      external_url: input.external_url ?? null,
+      contact_name: input.contact_name ?? null,
+      contact_phone: input.contact_phone ?? null,
+      contact_email: input.contact_email ?? null,
+    };
+  });
+}
+
 export async function addFoodPlace(formData: FormData) {
   const admin = await requireAdmin();
   requireWriteRole(admin);
@@ -171,39 +287,21 @@ export async function addCommunityEvent(formData: FormData) {
   requireWriteRole(admin);
 
   const input = addEventSchema.parse(rawForm(formData));
-  await assertSlugAvailable("community_events", input.slug);
+  await assertLinkedPlaceAvailable(input.linked_place_id);
+
+  const eventRows = buildEventRows(input);
+
+  for (const eventRow of eventRows) {
+    await assertSlugAvailable("community_events", eventRow.slug);
+  }
 
   const supabase = createSupabaseAdminClient();
-  const { data: event, error } = await supabase
+  const { data: events, error } = await supabase
     .from("community_events")
-    .insert({
-      title: input.title,
-      slug: input.slug,
-      host_name: input.host_name ?? null,
-      event_type: input.event_type,
-      starts_at: input.starts_at,
-      ends_at: input.ends_at ?? null,
-      address: input.address ?? null,
-      suburb: input.suburb ?? null,
-      latitude: input.latitude ?? null,
-      longitude: input.longitude ?? null,
-      cost: input.cost ?? null,
-      registration_url: input.registration_url ?? null,
-      description: input.description || "",
-      is_active: input.is_active,
-      details_last_updated: input.details_last_updated ?? null,
-      linked_place_id: input.linked_place_id ?? null,
-      organizer_name: input.organizer_name,
-      location_name: input.location_name ?? null,
-      external_url: input.external_url ?? null,
-      contact_name: input.contact_name ?? null,
-      contact_phone: input.contact_phone ?? null,
-      contact_email: input.contact_email ?? null,
-    })
-    .select("id, title, slug")
-    .single();
+    .insert(eventRows)
+    .select("id, title, slug");
 
-  if (error || !event) {
+  if (error || !events?.length) {
     throw new Error(error?.message || "Could not create event.");
   }
 
@@ -211,12 +309,22 @@ export async function addCommunityEvent(formData: FormData) {
     admin,
     action: "community_event.created",
     entityType: "community_event",
-    entityId: event.id,
-    afterData: input,
+    entityId: events.length === 1 ? events[0].id : null,
+    afterData: {
+      ...input,
+      repeat_frequency: input.repeat_frequency,
+      repeat_count: input.repeat_count,
+      events: events.map((event) => ({
+        id: event.id,
+        title: event.title,
+        slug: event.slug,
+      })),
+    },
   });
 
   revalidatePath("/add/event");
-  redirect(`/add/event?created=${encodeURIComponent(event.title)}`);
+  const message = events.length === 1 ? events[0].title : `${events.length} events`;
+  redirect(`/add/event?created=${encodeURIComponent(message)}`);
 }
 
 export async function addAnnouncement(formData: FormData) {

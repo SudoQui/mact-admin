@@ -8,8 +8,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="page-shell">
       <aside className="sidebar">
-        <div className="brand">MACT</div>
-        <div className="brand-subtitle">Admin dashboard</div>
+        <div className="brand-lockup">
+          <div className="brand-mark">M</div>
+          <div>
+            <div className="brand">MACT Admin</div>
+            <div className="brand-subtitle">Powered by SudoLabs</div>
+          </div>
+        </div>
 
         <nav className="nav-list">
           <Link className="nav-link" href="/dashboard">Dashboard</Link>
@@ -19,7 +24,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <a className="nav-link" href="https://appstoreconnect.apple.com" target="_blank" rel="noreferrer">App Store Connect</a>
         </nav>
 
-        <div className="dev-links">
+        <div className="sidebar-footer">
+          <a className="sudolabs-card" href="https://sudolabs.app" target="_blank" rel="noreferrer">
+            <span className="sudolabs-eyebrow">SudoLabs</span>
+            <span className="sudolabs-tagline">Applied software, AI and systems engineering.</span>
+            <span>sudolabs.app</span>
+          </a>
           <p className="muted">Signed in as<br />{admin.email}</p>
           <form action={signOut}>
             <button className="button secondary" type="submit">Sign out</button>

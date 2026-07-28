@@ -7,8 +7,17 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
   return (
     <main className="login-shell">
       <section className="card login-card">
-        <div className="brand">MACT Admin</div>
-        <p className="brand-subtitle">Private dashboard for trusted Muslims ACT data.</p>
+        <div className="brand-lockup">
+          <div className="brand-mark">M</div>
+          <div>
+            <div className="brand">MACT Admin</div>
+            <p className="brand-subtitle">Private dashboard for trusted Muslims ACT data.</p>
+          </div>
+        </div>
+        <div className="login-brand-note">
+          <span className="powered-pill">Powered by SudoLabs</span>
+          <span>Applied software, AI and systems engineering.</span>
+        </div>
 
         {error === "not_admin" ? (
           <div className="warning">Your login worked, but this account is not allowlisted as an admin.</div>

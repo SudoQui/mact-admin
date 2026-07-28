@@ -1,14 +1,33 @@
 import Link from "next/link";
+import { LinkedPlaceLocationPicker } from "@/components/LinkedPlaceLocationPicker";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addCommunityEvent } from "@/lib/actions/add-actions";
-import { eventTypes } from "@/lib/validation/schemas";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { eventTypes, repeatFrequencies } from "@/lib/validation/schemas";
 
 function Options({ values }: { values: readonly string[] }) {
   return values.map((value) => <option value={value} key={value}>{value}</option>);
 }
 
+async function getActivePlaces() {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("places")
+    .select("id, name, mode, category, suburb, address, latitude, longitude")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) {
+    throw new Error(`Could not load active places: ${error.message}`);
+  }
+
+  return data ?? [];
+}
+
 export default async function AddEventPage({ searchParams }: { searchParams?: Promise<{ created?: string }> }) {
   const params = searchParams ? await searchParams : {};
+  const places = await getActivePlaces();
+
   return (
     <>
       <div className="top-row">
@@ -38,14 +57,19 @@ export default async function AddEventPage({ searchParams }: { searchParams?: Pr
         </section>
 
         <section className="card">
-          <h2>Location and links</h2>
+          <h2>Repeat</h2>
           <div className="field-grid">
-            <div className="field"><label>Linked place ID optional</label><input name="linked_place_id" /></div>
-            <div className="field"><label>Location name</label><input name="location_name" /></div>
-            <div className="field"><label>Address</label><input name="address" /></div>
-            <div className="field"><label>Suburb</label><input name="suburb" /></div>
-            <div className="field"><label>Latitude optional</label><input name="latitude" type="number" step="any" min="-90" max="90" /></div>
-            <div className="field"><label>Longitude optional</label><input name="longitude" type="number" step="any" min="-180" max="180" /></div>
+            <div className="field"><label>Repeat frequency</label><select name="repeat_frequency" defaultValue="none"><Options values={repeatFrequencies} /></select></div>
+            <div className="field"><label>Repeat count</label><input name="repeat_count" type="number" defaultValue="1" min="1" max="52" /></div>
+          </div>
+        </section>
+
+        <section className="card">
+          <h2>Location and links</h2>
+          <p className="muted">Choose a linked MACT place when the event is hosted at a known Food or Prayer location. Use manual location fields for one off venues.</p>
+          <p className="muted">Selecting a linked place prefills the location fields. You can still edit them before saving.</p>
+          <div className="field-grid">
+            <LinkedPlaceLocationPicker places={places} />
             <div className="field"><label>Cost</label><input name="cost" /></div>
             <div className="field"><label>Registration URL</label><input name="registration_url" type="url" /></div>
             <div className="field"><label>External URL</label><input name="external_url" type="url" /></div>

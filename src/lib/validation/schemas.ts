@@ -14,6 +14,7 @@ const optionalNumber = z.preprocess(emptyToNull, z.coerce.number().nullable()).o
 const requiredLatitude = z.coerce.number().min(-90).max(90);
 const requiredLongitude = z.coerce.number().min(-180).max(180);
 const boolFromString = z.enum(["true", "false"]).transform((value) => value === "true");
+const optionalUuid = z.preprocess(emptyToNull, z.uuid().nullable()).optional();
 
 export const foodCategories = ["restaurant", "cafe", "butcher", "grocery", "dessert"] as const;
 export const prayerCategories = ["mosque", "musallah", "jummah_location", "prayer_room", "community_centre", "university"] as const;
@@ -24,6 +25,7 @@ export const verificationSources = ["admin", "owner", "certificate", "community"
 export const prayerVerificationSources = ["admin", "owner", "official", "community", "unknown"] as const;
 export const confidenceLevels = ["high", "medium", "low"] as const;
 export const eventTypes = ["class", "event", "announcement", "lecture", "khutbah", "jamaat", "fundraiser", "youth", "sisters", "brothers", "family", "other"] as const;
+export const repeatFrequencies = ["none", "daily", "weekly", "fortnightly", "monthly"] as const;
 export const whatsNewModes = ["food", "prayer", "community", "global"] as const;
 export const whatsNewTypes = ["announcement", "promotion", "event", "alert", "app_update"] as const;
 export const priorities = ["normal", "important", "urgent"] as const;
@@ -42,9 +44,9 @@ export const addFoodSchema = z.object({
   website: optionalUrl,
   latitude: requiredLatitude,
   longitude: requiredLongitude,
-  is_active: boolFromString.default("true"),
+  is_active: boolFromString.prefault("true"),
   halal_meat_coverage: z.enum(halalMeatCoverage).default("unknown"),
-  halal_certified: boolFromString.default("false"),
+  halal_certified: boolFromString.prefault("false"),
   halal_certificate_expiry: optionalDate,
   hand_slaughtered: z.enum(yesNoUnknown).default("unknown"),
   pork_status: z.enum(porkAlcoholStatus).default("unknown"),
@@ -70,9 +72,9 @@ export const addPrayerSchema = z.object({
   website: optionalUrl,
   latitude: requiredLatitude,
   longitude: requiredLongitude,
-  is_active: boolFromString.default("true"),
-  daily_prayers: boolFromString.default("false"),
-  jummah: boolFromString.default("false"),
+  is_active: boolFromString.prefault("true"),
+  daily_prayers: boolFromString.prefault("false"),
+  jummah: boolFromString.prefault("false"),
   women_area: z.enum(yesNoUnknown).default("unknown"),
   wudu: z.enum(yesNoUnknown).default("unknown"),
   parking_notes: optionalText,
@@ -80,7 +82,7 @@ export const addPrayerSchema = z.object({
   details_last_updated: optionalDate,
   prayer_place_type: z.enum([...prayerCategories, "unknown"] as const).default("unknown"),
   official_prayer_times_url: optionalUrl,
-  multiple_jummah_sessions: boolFromString.default("false"),
+  multiple_jummah_sessions: boolFromString.prefault("false"),
   bathrooms_available: z.enum(yesNoUnknown).default("unknown"),
   parking_available: z.enum(yesNoUnknown).default("unknown"),
   wheelchair_accessible: z.enum(yesNoUnknown).default("unknown"),
@@ -110,18 +112,21 @@ export const addEventSchema = z.object({
   cost: optionalText,
   registration_url: optionalUrl,
   description: z.string().trim().default(""),
-  is_active: boolFromString.default("true"),
+  is_active: boolFromString.prefault("true"),
   details_last_updated: optionalDate,
-  linked_place_id: optionalText,
+  linked_place_id: optionalUuid,
   organizer_name: requiredText,
   location_name: optionalText,
   external_url: optionalUrl,
   contact_name: optionalText,
   contact_phone: optionalText,
   contact_email: optionalText,
+  repeat_frequency: z.enum(repeatFrequencies).prefault("none"),
+  repeat_count: z.coerce.number().int().min(1).max(52).prefault("1"),
 }).transform((data) => ({
   ...data,
   slug: data.slug?.trim() || makeSlug(data.title),
+  repeat_count: data.repeat_frequency === "none" ? 1 : data.repeat_count,
 }));
 
 export const addAnnouncementSchema = z.object({
@@ -138,5 +143,5 @@ export const addAnnouncementSchema = z.object({
   priority: z.enum(priorities).default("normal"),
   visible_from: optionalText,
   visible_until: optionalText,
-  is_active: boolFromString.default("true"),
+  is_active: boolFromString.prefault("true"),
 });
