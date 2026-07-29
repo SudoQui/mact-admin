@@ -3,7 +3,7 @@ import { LinkedPlaceLocationPicker } from "@/components/LinkedPlaceLocationPicke
 import { SubmitButton } from "@/components/SubmitButton";
 import { addCommunityEvent } from "@/lib/actions/add-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { eventTypes, repeatFrequencies } from "@/lib/validation/schemas";
+import { eventTypes, recurrenceSeriesModes, repeatFrequencies } from "@/lib/validation/schemas";
 
 function Options({ values }: { values: readonly string[] }) {
   return values.map((value) => <option value={value} key={value}>{value}</option>);
@@ -61,7 +61,18 @@ export default async function AddEventPage({ searchParams }: { searchParams?: Pr
           <div className="field-grid">
             <div className="field"><label>Repeat frequency</label><select name="repeat_frequency" defaultValue="none"><Options values={repeatFrequencies} /></select></div>
             <div className="field"><label>Repeat count</label><input name="repeat_count" type="number" defaultValue="1" min="1" max="52" /></div>
+            <div className="field">
+              <label>Recurrence series</label>
+              <select name="recurrence_series_mode" defaultValue="none">
+                <Options values={recurrenceSeriesModes} />
+              </select>
+            </div>
+            <div className="field">
+              <label>Existing series ID</label>
+              <input name="recurrence_series_id" placeholder="Required only when recurrence series is existing" />
+            </div>
           </div>
+          <p className="muted">Repeated rows automatically share a generated series ID. Use Existing to attach this occurrence to a series you already created.</p>
         </section>
 
         <section className="card">

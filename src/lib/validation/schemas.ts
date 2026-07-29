@@ -26,6 +26,7 @@ export const prayerVerificationSources = ["admin", "owner", "official", "communi
 export const confidenceLevels = ["high", "medium", "low"] as const;
 export const eventTypes = ["class", "event", "announcement", "lecture", "khutbah", "jamaat", "fundraiser", "youth", "sisters", "brothers", "family", "other"] as const;
 export const repeatFrequencies = ["none", "daily", "weekly", "fortnightly", "monthly"] as const;
+export const recurrenceSeriesModes = ["none", "new", "existing"] as const;
 export const whatsNewModes = ["food", "prayer", "community", "global"] as const;
 export const whatsNewTypes = ["announcement", "promotion", "event", "alert", "app_update"] as const;
 export const priorities = ["normal", "important", "urgent"] as const;
@@ -123,11 +124,19 @@ export const addEventSchema = z.object({
   contact_email: optionalText,
   repeat_frequency: z.enum(repeatFrequencies).prefault("none"),
   repeat_count: z.coerce.number().int().min(1).max(52).prefault("1"),
+  recurrence_series_mode: z.enum(recurrenceSeriesModes).prefault("none"),
+  recurrence_series_id: optionalUuid,
 }).transform((data) => ({
   ...data,
   slug: data.slug?.trim() || makeSlug(data.title),
   repeat_count: data.repeat_frequency === "none" ? 1 : data.repeat_count,
-}));
+})).refine(
+  (data) => data.recurrence_series_mode !== "existing" || Boolean(data.recurrence_series_id),
+  {
+    message: "Existing series ID is required.",
+    path: ["recurrence_series_id"],
+  }
+);
 
 export const addAnnouncementSchema = z.object({
   mode: z.enum(whatsNewModes),

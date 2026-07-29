@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireWriteRole } from "@/lib/auth/require-admin";
@@ -100,6 +101,7 @@ type EventInput = ReturnType<typeof addEventSchema.parse>;
 
 function buildEventRows(input: EventInput) {
   const isRepeating = input.repeat_frequency !== "none" && input.repeat_count > 1;
+  const recurrenceSeriesId = getRecurrenceSeriesId(input, isRepeating);
   const startsAt = isRepeating ? parseEventDate(input.starts_at, "Starts at") : null;
   const endsAt = isRepeating && input.ends_at ? parseEventDate(input.ends_at, "Ends at") : null;
   const durationMs = startsAt && endsAt ? endsAt.getTime() - startsAt.getTime() : null;
@@ -136,8 +138,17 @@ function buildEventRows(input: EventInput) {
       contact_name: input.contact_name ?? null,
       contact_phone: input.contact_phone ?? null,
       contact_email: input.contact_email ?? null,
+      recurrence_series_id: recurrenceSeriesId,
     };
   });
+}
+
+function getRecurrenceSeriesId(input: EventInput, isRepeating: boolean) {
+  if (input.recurrence_series_mode === "existing") return input.recurrence_series_id ?? null;
+  if (input.recurrence_series_mode === "new") return randomUUID();
+  if (isRepeating) return randomUUID();
+
+  return null;
 }
 
 export async function addFoodPlace(formData: FormData) {
