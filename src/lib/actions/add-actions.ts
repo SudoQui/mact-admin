@@ -5,11 +5,28 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireWriteRole } from "@/lib/auth/require-admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { addAnnouncementSchema, addEventSchema, addFoodSchema, addPrayerSchema } from "@/lib/validation/schemas";
+import { addAnnouncementSchema, addEventSchema, addFoodSchema, addPrayerSchema, communityEventTags } from "@/lib/validation/schemas";
 import { writeAuditLog } from "./audit";
 
 function rawForm(formData: FormData) {
   return Object.fromEntries(formData.entries());
+}
+
+function communityEventForm(formData: FormData) {
+  const submittedTags = formData
+    .getAll("event_tags")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const uniqueSubmittedTags = Array.from(new Set(submittedTags));
+  const eventTags: string[] = [
+    ...communityEventTags.filter((tag) => uniqueSubmittedTags.includes(tag)),
+    ...uniqueSubmittedTags.filter((tag) => !communityEventTags.includes(tag as (typeof communityEventTags)[number])),
+  ];
+
+  return {
+    ...rawForm(formData),
+    event_tags: eventTags,
+  };
 }
 
 async function assertSlugAvailable(table: "places" | "community_events", slug: string) {
@@ -120,6 +137,7 @@ function buildEventRows(input: EventInput) {
       slug,
       host_name: input.host_name ?? null,
       event_type: input.event_type,
+      event_tags: input.event_tags,
       starts_at: occurrenceStart ? formatDateTimeLocal(occurrenceStart) : input.starts_at,
       ends_at: occurrenceEnd ? formatDateTimeLocal(occurrenceEnd) : input.ends_at ?? null,
       address: input.address ?? null,
@@ -297,7 +315,7 @@ export async function addCommunityEvent(formData: FormData) {
   const admin = await requireAdmin();
   requireWriteRole(admin);
 
-  const input = addEventSchema.parse(rawForm(formData));
+  const input = addEventSchema.parse(communityEventForm(formData));
   await assertLinkedPlaceAvailable(input.linked_place_id);
 
   const eventRows = buildEventRows(input);

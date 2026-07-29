@@ -185,6 +185,50 @@ p {
   gap: 7px;
 }
 
+.tag-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fffdf7;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.tag-checkbox:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 91, 117, 0.16);
+}
+
+.tag-checkbox input {
+  width: auto;
+}
+
+.tag-checkbox:has(input:checked) {
+  border-color: var(--primary);
+  background: #e8f2f3;
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.tag-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-badge {
+  background: #eef6f0;
+  color: var(--primary-dark);
+}
+
 label {
   font-weight: 700;
   font-size: 14px;

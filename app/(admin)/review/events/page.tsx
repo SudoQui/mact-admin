@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { communityEventTagLabels } from "@/lib/validation/schemas";
 
 type CommunityEvent = {
   id: string;
   title: string | null;
   event_type: string | null;
+  event_tags: string[] | null;
   starts_at: string | null;
   ends_at: string | null;
   location_name: string | null;
@@ -39,6 +41,7 @@ const eventSelect = [
   "id",
   "title",
   "event_type",
+  "event_tags",
   "starts_at",
   "ends_at",
   "location_name",
@@ -132,6 +135,20 @@ function locationLabel(event: CommunityEvent) {
   return [event.location_name, event.address, event.suburb].filter(Boolean).join(", ") || "Not set";
 }
 
+function tagLabel(tag: string) {
+  return communityEventTagLabels[tag as keyof typeof communityEventTagLabels] ?? tag;
+}
+
+function EventTagBadges({ tags }: { tags: string[] | null }) {
+  if (!tags?.length) return null;
+
+  return (
+    <div className="tag-badges">
+      {tags.map((tag) => <span className="badge tag-badge" key={tag}>{tagLabel(tag)}</span>)}
+    </div>
+  );
+}
+
 async function getEvents() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -199,6 +216,7 @@ function CalendarView({ events, monthDate }: { events: CommunityEvent[]; monthDa
                 >
                   <strong>{event.title ?? "Untitled event"}</strong>
                   <span>{formatTime(event.starts_at)}</span>
+                  <EventTagBadges tags={event.event_tags} />
                   <StatusBadge event={event} />
                 </Link>
               ))}
@@ -220,6 +238,7 @@ function ListView({ events }: { events: CommunityEvent[] }) {
             <p className="muted">{formatDateTime(event.starts_at)}</p>
           </div>
           <span className="badge">{event.event_type ?? "unknown"}</span>
+          <EventTagBadges tags={event.event_tags} />
           <p>{locationLabel(event)}</p>
           <StatusBadge event={event} />
         </Link>

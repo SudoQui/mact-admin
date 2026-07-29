@@ -25,6 +25,19 @@ export const verificationSources = ["admin", "owner", "certificate", "community"
 export const prayerVerificationSources = ["admin", "owner", "official", "community", "unknown"] as const;
 export const confidenceLevels = ["high", "medium", "low"] as const;
 export const eventTypes = ["class", "event", "announcement", "lecture", "khutbah", "jamaat", "fundraiser", "youth", "sisters", "brothers", "family", "other"] as const;
+export const communityEventTags = ["women", "men", "youth", "children", "families", "brothers", "sisters", "students", "new_muslims", "general"] as const;
+export const communityEventTagLabels: Record<(typeof communityEventTags)[number], string> = {
+  women: "Women",
+  men: "Men",
+  youth: "Youth",
+  children: "Children",
+  families: "Families",
+  brothers: "Brothers",
+  sisters: "Sisters",
+  students: "Students",
+  new_muslims: "New Muslims",
+  general: "General",
+};
 export const repeatFrequencies = ["none", "daily", "weekly", "fortnightly", "monthly"] as const;
 export const recurrenceSeriesModes = ["none", "new", "existing"] as const;
 export const whatsNewModes = ["food", "prayer", "community", "global"] as const;
@@ -32,6 +45,11 @@ export const whatsNewTypes = ["announcement", "promotion", "event", "alert", "ap
 export const priorities = ["normal", "important", "urgent"] as const;
 export const capacityLevels = ["small", "medium", "large", "unknown"] as const;
 export const prayerTimesSources = ["admin", "submitted", "official", "unknown"] as const;
+
+const communityEventTagsSchema = z.array(z.enum(communityEventTags)).prefault([]).transform((tags) => {
+  const selectedTags = new Set(tags);
+  return communityEventTags.filter((tag) => selectedTags.has(tag));
+}).pipe(z.array(z.enum(communityEventTags)).max(6));
 
 export const addFoodSchema = z.object({
   name: requiredText,
@@ -104,6 +122,7 @@ export const addEventSchema = z.object({
   slug: z.string().trim().optional(),
   host_name: optionalText,
   event_type: z.enum(eventTypes),
+  event_tags: communityEventTagsSchema,
   starts_at: requiredText,
   ends_at: optionalText,
   address: optionalText,

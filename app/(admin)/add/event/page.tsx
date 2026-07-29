@@ -3,7 +3,7 @@ import { LinkedPlaceLocationPicker } from "@/components/LinkedPlaceLocationPicke
 import { SubmitButton } from "@/components/SubmitButton";
 import { addCommunityEvent } from "@/lib/actions/add-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { eventTypes, recurrenceSeriesModes, repeatFrequencies } from "@/lib/validation/schemas";
+import { communityEventTagLabels, communityEventTags, eventTypes, recurrenceSeriesModes, repeatFrequencies } from "@/lib/validation/schemas";
 
 function Options({ values }: { values: readonly string[] }) {
   return values.map((value) => <option value={value} key={value}>{value}</option>);
@@ -54,6 +54,19 @@ export default async function AddEventPage({ searchParams }: { searchParams?: Pr
             <div className="field"><label>Active</label><select name="is_active" defaultValue="true"><option value="true">true</option><option value="false">false</option></select></div>
           </div>
           <div className="field"><label>Description</label><textarea name="description" /></div>
+        </section>
+
+        <section className="card">
+          <h2>Audience and tags</h2>
+          <p className="muted">Select every tag that applies. For example, an event can be a Class for Women and Youth.</p>
+          <div className="tag-checkbox-grid">
+            {communityEventTags.map((tag) => (
+              <label className="tag-checkbox" key={tag}>
+                <input name="event_tags" type="checkbox" value={tag} />
+                <span>{communityEventTagLabels[tag]}</span>
+              </label>
+            ))}
+          </div>
         </section>
 
         <section className="card">

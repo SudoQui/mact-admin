@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { cancelCommunityEventFromDetail, deleteCommunityEventFromDetail, restoreCommunityEventFromDetail } from "@/lib/actions/review-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { communityEventTagLabels } from "@/lib/validation/schemas";
 
 const supabaseProjectUrl = "https://supabase.com/dashboard/project/vogcmwmwttaisxomxtbo";
 
@@ -10,6 +11,7 @@ type CommunityEvent = {
   id: string;
   title: string | null;
   event_type: string | null;
+  event_tags: string[] | null;
   starts_at: string | null;
   ends_at: string | null;
   location_name: string | null;
@@ -39,6 +41,7 @@ const eventSelect = [
   "id",
   "title",
   "event_type",
+  "event_tags",
   "starts_at",
   "ends_at",
   "location_name",
@@ -71,6 +74,20 @@ function formatDateTime(value: string | null) {
 
 function valueOrFallback(value: string | null | undefined) {
   return value?.trim() || "Not set";
+}
+
+function tagLabel(tag: string) {
+  return communityEventTagLabels[tag as keyof typeof communityEventTagLabels] ?? tag;
+}
+
+function EventTagBadges({ tags }: { tags: string[] | null }) {
+  if (!tags?.length) return <p className="muted">No audience tags selected.</p>;
+
+  return (
+    <div className="tag-badges">
+      {tags.map((tag) => <span className="badge tag-badge" key={tag}>{tagLabel(tag)}</span>)}
+    </div>
+  );
 }
 
 function isCancelled(event: CommunityEvent) {
@@ -122,6 +139,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <StatusBadge event={event} />
           <h1>{event.title ?? "Untitled event"}</h1>
           <p className="muted">{event.event_type ?? "unknown"} event</p>
+          <EventTagBadges tags={event.event_tags} />
         </div>
         <Link className="button secondary" href="/review/events">Back</Link>
       </div>
