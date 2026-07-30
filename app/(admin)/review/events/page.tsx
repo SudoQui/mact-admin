@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { formatCanberraDateTime, formatCanberraTime, getCanberraDateKey } from "@/lib/utils/canberra-time";
 import { communityEventTagLabels } from "@/lib/validation/schemas";
 
 type CommunityEvent = {
@@ -37,11 +38,10 @@ type SearchParams = {
   month?: string;
 };
 
-const eventSelect = [
+const eventSelectBase = [
   "id",
   "title",
   "event_type",
-  "event_tags",
   "starts_at",
   "ends_at",
   "location_name",
@@ -67,17 +67,9 @@ const eventSelect = [
   "recurrence_series_id",
 ].join(", ");
 
+const eventSelect = `event_tags, ${eventSelectBase}`;
+
 const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatDateTime(value: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
-function formatTime(value: string | null) {
-  if (!value) return "No time";
-  return new Intl.DateTimeFormat("en-AU", { timeStyle: "short" }).format(new Date(value));
-}
 
 function formatMonthHeading(monthDate: Date) {
   return new Intl.DateTimeFormat("en-AU", { month: "long", year: "numeric" }).format(monthDate);
@@ -113,14 +105,12 @@ function calendarDays(monthDate: Date) {
   });
 }
 
+function dateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function isSameDay(date: Date, value: string | null) {
-  if (!value) return false;
-  const eventDate = new Date(value);
-  return (
-    eventDate.getFullYear() === date.getFullYear() &&
-    eventDate.getMonth() === date.getMonth() &&
-    eventDate.getDate() === date.getDate()
-  );
+  return dateKey(date) === getCanberraDateKey(value);
 }
 
 function isCancelled(event: CommunityEvent) {
@@ -157,10 +147,30 @@ async function getEvents() {
     .order("starts_at", { ascending: true });
 
   if (error) {
+    if (isMissingEventTagsColumn(error.message)) {
+      const fallback = await supabase
+        .from("community_events")
+        .select(eventSelectBase)
+        .order("starts_at", { ascending: true });
+
+      if (fallback.error) {
+        throw new Error(`Could not load community events: ${fallback.error.message}`);
+      }
+
+      return ((fallback.data ?? []) as unknown as CommunityEvent[]).map((event) => ({
+        ...event,
+        event_tags: [],
+      }));
+    }
+
     throw new Error(`Could not load community events: ${error.message}`);
   }
 
   return (data ?? []) as unknown as CommunityEvent[];
+}
+
+function isMissingEventTagsColumn(message: string) {
+  return message.includes("community_events.event_tags") || message.includes("event_tags");
 }
 
 function StatusBadge({ event }: { event: CommunityEvent }) {
@@ -215,7 +225,7 @@ function CalendarView({ events, monthDate }: { events: CommunityEvent[]; monthDa
                   key={event.id}
                 >
                   <strong>{event.title ?? "Untitled event"}</strong>
-                  <span>{formatTime(event.starts_at)}</span>
+                  <span>{formatCanberraTime(event.starts_at)}</span>
                   <EventTagBadges tags={event.event_tags} />
                   <StatusBadge event={event} />
                 </Link>
@@ -235,7 +245,7 @@ function ListView({ events }: { events: CommunityEvent[] }) {
         <Link className="card event-list-item" href={`/review/events/${event.id}`} key={event.id}>
           <div>
             <h2>{event.title ?? "Untitled event"}</h2>
-            <p className="muted">{formatDateTime(event.starts_at)}</p>
+            <p className="muted">{formatCanberraDateTime(event.starts_at)}</p>
           </div>
           <span className="badge">{event.event_type ?? "unknown"}</span>
           <EventTagBadges tags={event.event_tags} />
@@ -261,6 +271,7 @@ export default async function EventsReviewPage({ searchParams }: { searchParams?
         <div>
           <h1>Community Events</h1>
           <p className="muted">Manage event occurrences without hard deleting rows.</p>
+          <p className="muted">Times shown in Canberra time.</p>
         </div>
         <Link className="button secondary" href="/review">Back</Link>
       </div>

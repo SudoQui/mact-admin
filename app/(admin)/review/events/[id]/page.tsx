@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { cancelCommunityEventFromDetail, deleteCommunityEventFromDetail, restoreCommunityEventFromDetail } from "@/lib/actions/review-actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { formatCanberraDateTime } from "@/lib/utils/canberra-time";
 import { communityEventTagLabels } from "@/lib/validation/schemas";
 
 const supabaseProjectUrl = "https://supabase.com/dashboard/project/vogcmwmwttaisxomxtbo";
@@ -37,11 +38,10 @@ type CommunityEvent = {
   recurrence_series_id: string | null;
 };
 
-const eventSelect = [
+const eventSelectBase = [
   "id",
   "title",
   "event_type",
-  "event_tags",
   "starts_at",
   "ends_at",
   "location_name",
@@ -67,10 +67,7 @@ const eventSelect = [
   "recurrence_series_id",
 ].join(", ");
 
-function formatDateTime(value: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
+const eventSelect = `event_tags, ${eventSelectBase}`;
 
 function valueOrFallback(value: string | null | undefined) {
   return value?.trim() || "Not set";
@@ -120,10 +117,29 @@ async function getEvent(id: string) {
     .maybeSingle();
 
   if (error) {
+    if (isMissingEventTagsColumn(error.message)) {
+      const fallback = await supabase
+        .from("community_events")
+        .select(eventSelectBase)
+        .eq("id", id)
+        .maybeSingle();
+
+      if (fallback.error) {
+        throw new Error(`Could not load event: ${fallback.error.message}`);
+      }
+
+      const event = fallback.data as unknown as Omit<CommunityEvent, "event_tags"> | null;
+      return event ? { ...event, event_tags: [] } : null;
+    }
+
     throw new Error(`Could not load event: ${error.message}`);
   }
 
   return data as unknown as CommunityEvent | null;
+}
+
+function isMissingEventTagsColumn(message: string) {
+  return message.includes("community_events.event_tags") || message.includes("event_tags");
 }
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -139,6 +155,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <StatusBadge event={event} />
           <h1>{event.title ?? "Untitled event"}</h1>
           <p className="muted">{event.event_type ?? "unknown"} event</p>
+          <p className="muted">Times shown in Canberra time.</p>
           <EventTagBadges tags={event.event_tags} />
         </div>
         <Link className="button secondary" href="/review/events">Back</Link>
@@ -148,11 +165,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <section className="card detail-section">
           <h2>Event timing</h2>
           <dl>
-            <DetailItem label="Starts at" value={formatDateTime(event.starts_at)} />
-            <DetailItem label="Ends at" value={formatDateTime(event.ends_at)} />
-            <DetailItem label="Created at" value={formatDateTime(event.created_at)} />
+            <DetailItem label="Starts at" value={formatCanberraDateTime(event.starts_at)} />
+            <DetailItem label="Ends at" value={formatCanberraDateTime(event.ends_at)} />
+            <DetailItem label="Created at" value={formatCanberraDateTime(event.created_at)} />
             <DetailItem label="Updated at" value="Not available" />
-            <DetailItem label="Details last updated" value={formatDateTime(event.details_last_updated)} />
+            <DetailItem label="Details last updated" value={formatCanberraDateTime(event.details_last_updated)} />
           </dl>
         </section>
 

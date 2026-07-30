@@ -185,6 +185,20 @@ p {
   gap: 7px;
 }
 
+.canberra-datetime-selector {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.4fr) minmax(74px, 0.6fr) minmax(82px, 0.6fr) minmax(86px, 0.6fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.datetime-preview {
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
+}
+
 .tag-checkbox-grid {
   display: flex;
   flex-wrap: wrap;
@@ -669,5 +683,9 @@ th {
 
   .event-list-item {
     grid-template-columns: 1fr;
+  }
+
+  .canberra-datetime-selector {
+    grid-template-columns: 1fr 1fr;
   }
 }

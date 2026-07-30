@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { cancelCommunityEvent, restoreCommunityEvent, type EventStatusActionState } from "@/lib/actions/review-actions";
+import { formatCanberraDateTime } from "@/lib/utils/canberra-time";
 
 type EventStatusActionsProps = {
   event: {
@@ -49,7 +50,7 @@ export function EventStatusActions({ event }: EventStatusActionsProps) {
                 <dt>Event</dt>
                 <dd>{event.title ?? "Untitled event"}</dd>
                 <dt>Date and time</dt>
-                <dd>{formatDateTime(event.starts_at)}</dd>
+                <dd>{formatCanberraDateTime(event.starts_at)}</dd>
               </dl>
               <div className="button-row">
                 <button className="button" disabled={isRestoring} type="submit">
@@ -85,7 +86,7 @@ export function EventStatusActions({ event }: EventStatusActionsProps) {
                 <dt>Event</dt>
                 <dd>{event.title ?? "Untitled event"}</dd>
                 <dt>Date and time</dt>
-                <dd>{formatDateTime(event.starts_at)}</dd>
+                <dd>{formatCanberraDateTime(event.starts_at)}</dd>
               </dl>
               <label>Cancellation note</label>
               <textarea
@@ -109,9 +110,4 @@ export function EventStatusActions({ event }: EventStatusActionsProps) {
       )}
     </div>
   );
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

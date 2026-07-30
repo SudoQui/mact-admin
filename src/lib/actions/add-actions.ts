@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireWriteRole } from "@/lib/auth/require-admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { addCanberraCalendarInterval, getCanberraDateKey } from "@/lib/utils/canberra-time";
 import { addAnnouncementSchema, addEventSchema, addFoodSchema, addPrayerSchema, communityEventTags } from "@/lib/validation/schemas";
 import { writeAuditLog } from "./audit";
 
@@ -62,75 +63,20 @@ async function assertLinkedPlaceAvailable(linkedPlaceId: string | null | undefin
   }
 }
 
-function padDatePart(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function formatDateTimeLocal(date: Date) {
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate()),
-  ].join("-") + `T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
-}
-
-function formatDateSlug(date: Date) {
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate()),
-  ].join("-");
-}
-
-function parseEventDate(value: string, fieldName: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    throw new Error(`${fieldName} must be a valid date and time.`);
-  }
-
-  return date;
-}
-
-function addOccurrenceInterval(date: Date, frequency: "daily" | "weekly" | "fortnightly" | "monthly", offset: number) {
-  const next = new Date(date);
-
-  if (frequency === "daily") {
-    next.setDate(next.getDate() + offset);
-  }
-
-  if (frequency === "weekly") {
-    next.setDate(next.getDate() + offset * 7);
-  }
-
-  if (frequency === "fortnightly") {
-    next.setDate(next.getDate() + offset * 14);
-  }
-
-  if (frequency === "monthly") {
-    next.setMonth(next.getMonth() + offset);
-  }
-
-  return next;
-}
-
 type EventInput = ReturnType<typeof addEventSchema.parse>;
 
 function buildEventRows(input: EventInput) {
   const isRepeating = input.repeat_frequency !== "none" && input.repeat_count > 1;
   const recurrenceSeriesId = getRecurrenceSeriesId(input, isRepeating);
-  const startsAt = isRepeating ? parseEventDate(input.starts_at, "Starts at") : null;
-  const endsAt = isRepeating && input.ends_at ? parseEventDate(input.ends_at, "Ends at") : null;
-  const durationMs = startsAt && endsAt ? endsAt.getTime() - startsAt.getTime() : null;
 
   return Array.from({ length: input.repeat_count }, (_, index) => {
-    const occurrenceStart = startsAt && input.repeat_frequency !== "none"
-      ? addOccurrenceInterval(startsAt, input.repeat_frequency, index)
-      : null;
-    const occurrenceEnd = occurrenceStart && durationMs !== null
-      ? new Date(occurrenceStart.getTime() + durationMs)
-      : null;
-    const slug = isRepeating && occurrenceStart ? `${input.slug}-${formatDateSlug(occurrenceStart)}` : input.slug;
+    const occurrenceStart = isRepeating && input.repeat_frequency !== "none"
+      ? addCanberraCalendarInterval(input.starts_at, input.repeat_frequency, index)
+      : input.starts_at;
+    const occurrenceEnd = isRepeating && input.repeat_frequency !== "none" && input.ends_at
+      ? addCanberraCalendarInterval(input.ends_at, input.repeat_frequency, index)
+      : input.ends_at ?? null;
+    const slug = isRepeating ? `${input.slug}-${getCanberraDateKey(occurrenceStart)}` : input.slug;
 
     return {
       title: input.title,
@@ -138,8 +84,8 @@ function buildEventRows(input: EventInput) {
       host_name: input.host_name ?? null,
       event_type: input.event_type,
       event_tags: input.event_tags,
-      starts_at: occurrenceStart ? formatDateTimeLocal(occurrenceStart) : input.starts_at,
-      ends_at: occurrenceEnd ? formatDateTimeLocal(occurrenceEnd) : input.ends_at ?? null,
+      starts_at: occurrenceStart,
+      ends_at: occurrenceEnd,
       address: input.address ?? null,
       suburb: input.suburb ?? null,
       latitude: input.latitude ?? null,
@@ -167,6 +113,14 @@ function getRecurrenceSeriesId(input: EventInput, isRepeating: boolean) {
   if (isRepeating) return randomUUID();
 
   return null;
+}
+
+function withoutEventTags(rows: ReturnType<typeof buildEventRows>) {
+  return rows.map(({ event_tags: _eventTags, ...row }) => row);
+}
+
+function isMissingEventTagsColumn(message: string) {
+  return message.includes("community_events.event_tags") || message.includes("event_tags");
 }
 
 export async function addFoodPlace(formData: FormData) {
@@ -325,10 +279,19 @@ export async function addCommunityEvent(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { data: events, error } = await supabase
+  let { data: events, error } = await supabase
     .from("community_events")
     .insert(eventRows)
     .select("id, title, slug");
+
+  if (error && isMissingEventTagsColumn(error.message)) {
+    const fallback = await supabase
+      .from("community_events")
+      .insert(withoutEventTags(eventRows))
+      .select("id, title, slug");
+    events = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !events?.length) {
     throw new Error(error?.message || "Could not create event.");

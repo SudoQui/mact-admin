@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CanberraDateTimeSelector } from "@/components/CanberraDateTimeSelector";
 import { LinkedPlaceLocationPicker } from "@/components/LinkedPlaceLocationPicker";
 import { SubmitButton } from "@/components/SubmitButton";
 import { addCommunityEvent } from "@/lib/actions/add-actions";
@@ -49,8 +50,8 @@ export default async function AddEventPage({ searchParams }: { searchParams?: Pr
             <div className="field"><label>Event type</label><select name="event_type" required><Options values={eventTypes} /></select></div>
             <div className="field"><label>Organizer name</label><input name="organizer_name" defaultValue="Muslims ACT" required /></div>
             <div className="field"><label>Host name</label><input name="host_name" /></div>
-            <div className="field"><label>Starts at</label><input name="starts_at" type="datetime-local" required /></div>
-            <div className="field"><label>Ends at</label><input name="ends_at" type="datetime-local" /></div>
+            <CanberraDateTimeSelector label="Starts at" name="starts_at" required />
+            <CanberraDateTimeSelector label="Ends at" name="ends_at" />
             <div className="field"><label>Active</label><select name="is_active" defaultValue="true"><option value="true">true</option><option value="false">false</option></select></div>
           </div>
           <div className="field"><label>Description</label><textarea name="description" /></div>

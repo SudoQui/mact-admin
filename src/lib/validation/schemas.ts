@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isUnambiguousTimestamp } from "@/lib/utils/canberra-time";
 import { makeSlug } from "@/lib/utils/slug";
 
 const emptyToNull = (value: unknown) => {
@@ -10,6 +11,8 @@ const optionalText = z.preprocess(emptyToNull, z.string().trim().min(1).nullable
 const optionalDate = z.preprocess(emptyToNull, z.string().nullable()).optional();
 const optionalUrl = z.preprocess(emptyToNull, z.string().trim().url().nullable()).optional();
 const requiredText = z.string().trim().min(1, "Required");
+const requiredTimestamp = z.string().trim().refine(isUnambiguousTimestamp, "Use an unambiguous timestamp with timezone.");
+const optionalTimestamp = z.preprocess(emptyToNull, z.string().trim().refine(isUnambiguousTimestamp, "Use an unambiguous timestamp with timezone.").nullable()).optional();
 const optionalNumber = z.preprocess(emptyToNull, z.coerce.number().nullable()).optional();
 const requiredLatitude = z.coerce.number().min(-90).max(90);
 const requiredLongitude = z.coerce.number().min(-180).max(180);
@@ -123,8 +126,8 @@ export const addEventSchema = z.object({
   host_name: optionalText,
   event_type: z.enum(eventTypes),
   event_tags: communityEventTagsSchema,
-  starts_at: requiredText,
-  ends_at: optionalText,
+  starts_at: requiredTimestamp,
+  ends_at: optionalTimestamp,
   address: optionalText,
   suburb: optionalText,
   latitude: optionalNumber,
@@ -145,7 +148,13 @@ export const addEventSchema = z.object({
   repeat_count: z.coerce.number().int().min(1).max(52).prefault("1"),
   recurrence_series_mode: z.enum(recurrenceSeriesModes).prefault("none"),
   recurrence_series_id: optionalUuid,
-}).transform((data) => ({
+}).refine(
+  (data) => !data.ends_at || new Date(data.ends_at).getTime() > new Date(data.starts_at).getTime(),
+  {
+    message: "End time must be after start time.",
+    path: ["ends_at"],
+  }
+).transform((data) => ({
   ...data,
   slug: data.slug?.trim() || makeSlug(data.title),
   repeat_count: data.repeat_frequency === "none" ? 1 : data.repeat_count,
