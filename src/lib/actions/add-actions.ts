@@ -123,6 +123,82 @@ function isMissingEventTagsColumn(message: string) {
   return message.includes("community_events.event_tags") || message.includes("event_tags");
 }
 
+function cleanSourceSubmissionId(formData: FormData) {
+  const value = String(formData.get("source_submission_id") || "").trim();
+  if (!value) return null;
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error("Invalid source submission id.");
+  }
+
+  return value;
+}
+
+async function getSourceEventSubmissionBefore(id: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("submissions")
+    .select("id, title, status, admin_notes, submission_type")
+    .eq("id", id)
+    .eq("submission_type", "suggest_event")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load source submission: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Source event submission was not found.");
+  }
+
+  return data as { id: string; title: string | null; status: string | null; admin_notes: string | null; submission_type: string | null };
+}
+
+async function markSourceSubmissionAccepted(input: {
+  admin: Awaited<ReturnType<typeof requireAdmin>>;
+  events: Array<{ id: string; title: string | null; slug: string | null }>;
+  sourceSubmissionBefore: { id: string; title: string | null; status: string | null; admin_notes: string | null; submission_type: string | null };
+}) {
+  const supabase = createSupabaseAdminClient();
+  const conversionNote = "Created event from this submission.";
+  const adminNotes = input.sourceSubmissionBefore.admin_notes?.trim()
+    ? `${input.sourceSubmissionBefore.admin_notes.trim()}\n\n${conversionNote}`
+    : conversionNote;
+
+  const { data: submission, error } = await supabase
+    .from("submissions")
+    .update({
+      status: "accepted",
+      admin_notes: adminNotes,
+    })
+    .eq("id", input.sourceSubmissionBefore.id)
+    .select("id, title, status, admin_notes")
+    .single();
+
+  if (error || !submission) {
+    throw new Error(error?.message || "Event was created, but the source submission could not be updated.");
+  }
+
+  await writeAuditLog({
+    admin: input.admin,
+    action: "submission.converted_to_event",
+    entityType: "submission",
+    entityId: submission.id,
+    beforeData: input.sourceSubmissionBefore,
+    afterData: {
+      submission,
+      events: input.events.map((event) => ({
+        id: event.id,
+        title: event.title,
+        slug: event.slug,
+      })),
+    },
+  });
+
+  revalidatePath("/review/event-submissions");
+  revalidatePath("/review/submissions");
+}
+
 export async function addFoodPlace(formData: FormData) {
   const admin = await requireAdmin();
   requireWriteRole(admin);
@@ -269,6 +345,8 @@ export async function addCommunityEvent(formData: FormData) {
   const admin = await requireAdmin();
   requireWriteRole(admin);
 
+  const sourceSubmissionId = cleanSourceSubmissionId(formData);
+  const sourceSubmissionBefore = sourceSubmissionId ? await getSourceEventSubmissionBefore(sourceSubmissionId) : null;
   const input = addEventSchema.parse(communityEventForm(formData));
   await assertLinkedPlaceAvailable(input.linked_place_id);
 
@@ -313,6 +391,14 @@ export async function addCommunityEvent(formData: FormData) {
       })),
     },
   });
+
+  if (sourceSubmissionBefore) {
+    await markSourceSubmissionAccepted({
+      admin,
+      events,
+      sourceSubmissionBefore,
+    });
+  }
 
   revalidatePath("/add/event");
   const message = events.length === 1 ? events[0].title : `${events.length} events`;

@@ -42,6 +42,10 @@ const eventStatusActionSchema = z.object({
   id: z.uuid(),
 });
 
+const announcementStatusActionSchema = z.object({
+  id: z.uuid(),
+});
+
 const deleteCommunityEventSchema = eventStatusActionSchema.extend({
   delete_scope: z.enum(["occurrence", "series"]).default("occurrence"),
 });
@@ -68,6 +72,25 @@ async function getSubmissionBefore(id: string) {
 
   if (!data) {
     throw new Error("Submission was not found.");
+  }
+
+  return data;
+}
+
+async function getAnnouncementBefore(id: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("whats_new_items")
+    .select("id, title, is_active")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load announcement: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Announcement was not found.");
   }
 
   return data;
@@ -218,6 +241,45 @@ export async function updateSubmissionReview(formData: FormData) {
   });
 
   revalidatePath("/review/submissions");
+  revalidatePath("/review/event-submissions");
+}
+
+async function updateAnnouncementActiveState(formData: FormData, isActive: boolean) {
+  const admin = await requireAdmin();
+  requireWriteRole(admin);
+
+  const input = announcementStatusActionSchema.parse(rawForm(formData));
+  const before = await getAnnouncementBefore(input.id);
+  const supabase = createSupabaseAdminClient();
+  const { data: announcement, error } = await supabase
+    .from("whats_new_items")
+    .update({ is_active: isActive })
+    .eq("id", input.id)
+    .select("id, title, is_active")
+    .single();
+
+  if (error || !announcement) {
+    throw new Error(error?.message || "Could not update announcement.");
+  }
+
+  await writeAuditLog({
+    admin,
+    action: isActive ? "whats_new_item.reactivated" : "whats_new_item.deactivated",
+    entityType: "whats_new_item",
+    entityId: announcement.id,
+    beforeData: before,
+    afterData: announcement,
+  });
+
+  revalidatePath("/review/announcements");
+}
+
+export async function deactivateAnnouncement(formData: FormData) {
+  await updateAnnouncementActiveState(formData, false);
+}
+
+export async function reactivateAnnouncement(formData: FormData) {
+  await updateAnnouncementActiveState(formData, true);
 }
 
 export async function reportAdminIssue(formData: FormData) {

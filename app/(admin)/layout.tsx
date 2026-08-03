@@ -1,9 +1,26 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { signOut } from "@/lib/actions/auth-actions";
 import { requireAdmin } from "@/lib/auth/require-admin";
 
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
+function getAdminEnvironmentLabel() {
+  const vercelEnv = process.env.VERCEL_ENV;
+
+  if (!vercelEnv) return "Local Admin";
+
+  return `${vercelEnv.charAt(0).toUpperCase()}${vercelEnv.slice(1)} Admin`;
+}
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
+  const environmentLabel = getAdminEnvironmentLabel();
 
   return (
     <div className="page-shell">
@@ -15,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <div className="brand-subtitle">Powered by SudoLabs</div>
           </div>
         </div>
+        <div className="environment-badge">Environment: {environmentLabel}</div>
 
         <nav className="nav-list">
           <Link className="nav-link" href="/dashboard">Dashboard</Link>

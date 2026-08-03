@@ -63,6 +63,19 @@ from auth.users
 where email = 'YOUR_EMAIL_HERE';
 ```
 
+## Secure Vercel Deployment Checklist
+
+- Rotate Supabase service role key
+- Set Vercel env vars
+- Enable Vercel Deployment Protection or Password Protection
+- Use Supabase Auth login
+- Add only trusted emails to admin_users
+- Confirm `.env.local` is not committed
+- Run `npm run build`
+- Test login from phone
+- Test add announcement
+- Check audit_log
+
 ## First version workflow
 
 1. Login with Supabase Auth.

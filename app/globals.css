@@ -168,6 +168,20 @@ p {
   font-size: 13px;
 }
 
+.environment-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #eef6f0;
+  color: var(--primary-dark);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  margin: -14px 0 22px;
+}
+
 .form {
   display: grid;
   gap: 18px;
@@ -456,6 +470,12 @@ textarea {
   margin-top: 28px;
 }
 
+.admin-warning {
+  margin-bottom: 18px;
+  box-shadow: none;
+  font-weight: 700;
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -513,6 +533,30 @@ th {
 .review-sections {
   display: grid;
   gap: 28px;
+}
+
+.announcement-list,
+.ticket-section {
+  align-items: start;
+}
+
+.suggested-data {
+  background: #fffdf7;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 14px 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+.prefill-banner {
+  margin-bottom: 18px;
+  box-shadow: none;
 }
 
 .section-heading {

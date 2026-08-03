@@ -21,6 +21,10 @@ type LocationFields = {
   longitude: string;
 };
 
+type LinkedPlaceLocationPickerDefaults = Partial<LocationFields> & {
+  linkedPlaceId?: string;
+};
+
 function optionLabel(place: LinkedPlaceOption) {
   return [place.name, place.mode, place.category, place.suburb].filter(Boolean).join(" · ");
 }
@@ -35,14 +39,20 @@ function fieldsFromPlace(place: LinkedPlaceOption): LocationFields {
   };
 }
 
-export function LinkedPlaceLocationPicker({ places }: { places: LinkedPlaceOption[] }) {
-  const [selectedPlaceId, setSelectedPlaceId] = useState("");
+export function LinkedPlaceLocationPicker({
+  defaultValues,
+  places,
+}: {
+  defaultValues?: LinkedPlaceLocationPickerDefaults;
+  places: LinkedPlaceOption[];
+}) {
+  const [selectedPlaceId, setSelectedPlaceId] = useState(defaultValues?.linkedPlaceId ?? "");
   const [fields, setFields] = useState<LocationFields>({
-    locationName: "",
-    address: "",
-    suburb: "",
-    latitude: "",
-    longitude: "",
+    locationName: defaultValues?.locationName ?? "",
+    address: defaultValues?.address ?? "",
+    suburb: defaultValues?.suburb ?? "",
+    latitude: defaultValues?.latitude ?? "",
+    longitude: defaultValues?.longitude ?? "",
   });
 
   function updateField(field: keyof LocationFields, value: string) {

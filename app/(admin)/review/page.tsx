@@ -12,9 +12,19 @@ const reviewCards = [
     description: "Review community-submitted updates, feedback, places, and events.",
   },
   {
+    title: "Event submissions",
+    href: "/review/event-submissions",
+    description: "Review suggested events and prefill the community event creation form.",
+  },
+  {
     title: "Community events",
     href: "/review/events",
     description: "Find active events with missing location details, stale metadata, or past dates.",
+  },
+  {
+    title: "Announcements",
+    href: "/review/announcements",
+    description: "Review active, scheduled, expired, and inactive app announcements.",
   },
   {
     title: "Report an issue",

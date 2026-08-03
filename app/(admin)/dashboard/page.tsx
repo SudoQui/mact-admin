@@ -29,6 +29,10 @@ export default async function DashboardPage() {
         <Link className="button" href="/add">Add New</Link>
       </div>
 
+      <section className="card warning admin-warning">
+        Private admin console. Only use on trusted devices. Changes write to MACT Supabase data.
+      </section>
+
       <section className="grid">
         <div className="card">
           <span className="badge">Places</span>
