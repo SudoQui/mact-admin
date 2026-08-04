@@ -18,6 +18,7 @@ This is a separate web app from the public MACT mobile app. It is designed for l
 - Safe dropdown values based on the current MACT schema
 - Basic audit logging hooks
 - Developer quick links for Play Console, App Store Connect, Supabase, Expo, and GitHub
+- EAS Update release registry for admin diagnostics
 
 ## Important security rule
 
@@ -34,7 +35,11 @@ The server only should receive:
 
 ```env
 SUPABASE_SERVICE_ROLE_KEY=
+ADMIN_OWNER_EMAIL=
+MACT_RELEASE_REGISTRATION_SECRET=
 ```
+
+`MACT_RELEASE_REGISTRATION_SECRET` protects the internal EAS Update registration endpoint. Set the same value on the dashboard server and in the local or CI environment that runs the MACT EAS Update publication script. Do not prefix it with `NEXT_PUBLIC_`, and do not commit the real value.
 
 ## Setup
 

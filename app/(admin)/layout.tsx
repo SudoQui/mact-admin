@@ -38,6 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link className="nav-link" href="/dashboard">Dashboard</Link>
           <Link className="nav-link" href="/add">Add New</Link>
           <Link className="nav-link" href="/review">Review</Link>
+          <Link className="nav-link" href="/releases/eas-updates">Releases</Link>
           <a className="nav-link" href="https://supabase.com/dashboard/project/vogcmwmwttaisxomxtbo" target="_blank" rel="noreferrer">Supabase</a>
           <a className="nav-link" href="https://play.google.com/console" target="_blank" rel="noreferrer">Google Play Console</a>
           <a className="nav-link" href="https://appstoreconnect.apple.com" target="_blank" rel="noreferrer">App Store Connect</a>

@@ -636,6 +636,36 @@ th {
   margin-bottom: 18px;
 }
 
+.filter-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(190px, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.release-summary-grid {
+  margin-bottom: 18px;
+}
+
+.release-tool-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.4fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.metadata-details {
+  margin-top: 8px;
+}
+
+.metadata-details summary {
+  color: var(--primary-dark);
+  cursor: pointer;
+  font-weight: 800;
+}
+
 .event-list {
   display: grid;
   gap: 12px;
@@ -731,5 +761,10 @@ th {
 
   .canberra-datetime-selector {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .filter-row,
+  .release-tool-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -14,10 +14,29 @@ const requiredText = z.string().trim().min(1, "Required");
 const requiredTimestamp = z.string().trim().refine(isUnambiguousTimestamp, "Use an unambiguous timestamp with timezone.");
 const optionalTimestamp = z.preprocess(emptyToNull, z.string().trim().refine(isUnambiguousTimestamp, "Use an unambiguous timestamp with timezone.").nullable()).optional();
 const optionalNumber = z.preprocess(emptyToNull, z.coerce.number().nullable()).optional();
+const optionalInteger = z.preprocess(emptyToNull, z.coerce.number().int().nullable()).optional();
 const requiredLatitude = z.coerce.number().min(-90).max(90);
 const requiredLongitude = z.coerce.number().min(-180).max(180);
 const boolFromString = z.enum(["true", "false"]).transform((value) => value === "true");
 const optionalUuid = z.preprocess(emptyToNull, z.uuid().nullable()).optional();
+
+const isIsoTimestampWithTimezone = (value: string): boolean => {
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+
+  if (!hasTimezone) {
+    return false;
+  }
+
+  return Number.isFinite(Date.parse(value));
+};
+
+const releaseTimestamp = z
+  .string()
+  .trim()
+  .refine(
+    isIsoTimestampWithTimezone,
+    "Use a valid ISO timestamp with timezone.",
+  );
 
 export const foodCategories = ["restaurant", "cafe", "butcher", "grocery", "dessert"] as const;
 export const prayerCategories = ["mosque", "musallah", "jummah_location", "prayer_room", "community_centre", "university"] as const;
@@ -48,6 +67,7 @@ export const whatsNewTypes = ["announcement", "promotion", "event", "alert", "ap
 export const priorities = ["normal", "important", "urgent"] as const;
 export const capacityLevels = ["small", "medium", "large", "unknown"] as const;
 export const prayerTimesSources = ["admin", "submitted", "official", "unknown"] as const;
+export const appUpdatePlatforms = ["android", "ios"] as const;
 
 const communityEventTagsSchema = z.array(z.enum(communityEventTags)).prefault([]).transform((tags) => {
   const selectedTags = new Set(tags);
@@ -182,3 +202,43 @@ export const addAnnouncementSchema = z.object({
   visible_until: optionalText,
   is_active: boolFromString.prefault("true"),
 });
+
+const optionalReleaseText = z.preprocess(emptyToNull, z.string().trim().min(1).nullable()).optional();
+const releaseMetadata = z.record(z.string(), z.unknown()).default({});
+
+const appUpdatePlatformsSchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((platform) => platform.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  return value;
+}, z.array(z.enum(appUpdatePlatforms)).min(1, "Select at least one platform.").transform((platforms) => {
+  const selectedPlatforms = new Set(platforms);
+  return appUpdatePlatforms.filter((platform) => selectedPlatforms.has(platform));
+}));
+
+export const appUpdateRegistrationSchema = z.object({
+  easUpdateId: z.uuid(),
+  updateGroupId: optionalUuid,
+  channel: requiredText.max(80).transform((value) => value.toLowerCase()),
+  branch: optionalReleaseText,
+  runtimeVersion: requiredText.max(120),
+  appVersion: optionalReleaseText,
+  androidVersionCode: optionalInteger,
+  iosBuildNumber: optionalReleaseText,
+  platforms: appUpdatePlatformsSchema,
+  message: optionalReleaseText,
+  gitCommitSha: optionalReleaseText.refine(
+    (value) => !value || /^[0-9a-f]{7,40}$/i.test(value),
+    "Git commit SHA must be 7 to 40 hexadecimal characters.",
+  ),
+  gitBranch: optionalReleaseText,
+  publishedAt: releaseTimestamp.transform((value) => new Date(value).toISOString(),),
+  isRollback: z.union([z.boolean(), boolFromString]).default(false),
+  metadata: releaseMetadata,
+}).strict();
+
+export type AppUpdateRegistrationInput = z.infer<typeof appUpdateRegistrationSchema>;
