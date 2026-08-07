@@ -535,6 +535,33 @@ th {
   gap: 28px;
 }
 
+.analytics-section {
+  display: grid;
+  gap: 14px;
+}
+
+.metric-card {
+  display: grid;
+  gap: 8px;
+}
+
+.metric-value {
+  color: var(--primary-dark);
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.data-table {
+  align-self: start;
+}
+
 .announcement-list,
 .ticket-section {
   align-items: start;

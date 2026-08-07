@@ -1,6 +1,10 @@
-import { timingSafeEqual } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import { parseAppUpdateRegistration, registerAppUpdate, registrationErrorMessage } from "@/lib/app-updates";
+import {
+  parseAppUpdateReleaseReservation,
+  reserveAppUpdateRelease,
+  registrationErrorMessage,
+} from "@/lib/app-updates";
 import { requiredEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -53,21 +57,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    const input = parseAppUpdateRegistration({
+    const reservationToken = randomBytes(32).toString("base64url");
+    const input = parseAppUpdateReleaseReservation({
       ...((body && typeof body === "object" && !Array.isArray(body)) ? body as Record<string, unknown> : {}),
       metadata: {
         ...metadataFromBody(body),
-        registration_source: "publish_script",
+        reservation_source: "publish_script",
       },
     });
-    const result = await registerAppUpdate(input, "release-script");
+    const result = await reserveAppUpdateRelease(input, "release-script", reservationToken);
 
     return NextResponse.json({
       ok: true,
-      created: result.created,
-      id: result.appUpdate.id,
-      easUpdateId: result.appUpdate.eas_update_id,
-      releaseNumber: result.appUpdate.release_number,
+      releaseNumber: result.reservation.release_number,
+      reservationToken: result.reservation.reservation_token,
     });
   } catch (error) {
     return NextResponse.json({ ok: false, error: registrationErrorMessage(error) }, { status: 400 });

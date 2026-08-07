@@ -222,6 +222,7 @@ const appUpdatePlatformsSchema = z.preprocess((value) => {
 
 export const appUpdateRegistrationSchema = z.object({
   easUpdateId: z.uuid(),
+  reservationToken: optionalReleaseText,
   updateGroupId: optionalUuid,
   channel: requiredText.max(80).transform((value) => value.toLowerCase()),
   branch: optionalReleaseText,
@@ -242,3 +243,13 @@ export const appUpdateRegistrationSchema = z.object({
 }).strict();
 
 export type AppUpdateRegistrationInput = z.infer<typeof appUpdateRegistrationSchema>;
+
+export const appUpdateReleaseReservationSchema = z.object({
+  channel: optionalReleaseText.transform((value) => value?.toLowerCase() ?? null),
+  platform: z.enum(appUpdatePlatforms).nullable().optional(),
+  runtimeVersion: optionalReleaseText,
+  appVersion: optionalReleaseText,
+  metadata: releaseMetadata,
+}).strict();
+
+export type AppUpdateReleaseReservationInput = z.infer<typeof appUpdateReleaseReservationSchema>;

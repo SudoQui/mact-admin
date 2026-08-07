@@ -51,6 +51,7 @@ export async function manuallyRegisterAppUpdate(
     const input = parseAppUpdateRegistration({
       ...raw,
       easUpdateId: raw.easUpdateId,
+      reservationToken: raw.reservationToken,
       updateGroupId: raw.updateGroupId,
       runtimeVersion: raw.runtimeVersion,
       appVersion: raw.appVersion,
@@ -68,7 +69,9 @@ export async function manuallyRegisterAppUpdate(
     revalidatePath("/releases/eas-updates");
     return {
       ok: true,
-      message: result.created ? "EAS update registered." : "EAS update was already registered.",
+      message: result.created
+        ? `EAS update registered as Release ${result.appUpdate.release_number}.`
+        : `EAS update was already registered as Release ${result.appUpdate.release_number}.`,
     };
   } catch (error) {
     return { ok: false, message: registrationErrorMessage(error) };

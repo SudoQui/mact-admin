@@ -24,7 +24,7 @@ function diagnosticString(update: AppUpdateRow) {
   const build = update.android_version_code ?? update.ios_build_number;
   const buildLabel = build ? ` (${build})` : "";
   const channel = update.channel.charAt(0).toUpperCase() + update.channel.slice(1);
-  return `${version}${buildLabel} - ${channel} - Runtime ${update.runtime_version} - Update ${shortId(update.eas_update_id)}`;
+  return `${version}${buildLabel} - Release ${update.release_number} - ${channel} - Runtime ${update.runtime_version} - Update ${shortId(update.eas_update_id)}`;
 }
 
 function parseTesterDiagnostic(value: string) {
@@ -32,7 +32,7 @@ function parseTesterDiagnostic(value: string) {
   if (parts.length < 3 || !parts[0].toLowerCase().startsWith("mact ")) return null;
 
   const appMatch = parts[0].match(/^MACT\s+([^\s(]+)(?:\s+\(([^)]+)\))?$/i);
-  const channel = parts[1]?.toLowerCase();
+  const channel = parts.find((part) => !/^release\s+/i.test(part) && !/^runtime\s+/i.test(part) && !/^update\s+/i.test(part) && !/^mact\s+/i.test(part))?.toLowerCase();
   const runtimePart = parts.find((part) => /^runtime\s+/i.test(part));
   const updatePart = parts.find((part) => /^update\s+/i.test(part));
   const updateId = updatePart?.replace(/^update\s+/i, "").trim().toLowerCase();
@@ -112,7 +112,7 @@ export function AppUpdatesClientTools({ latestUpdates, updates }: Props) {
           <label>Tester diagnostic string</label>
           <textarea
             onChange={(event) => setDiagnostic(event.target.value)}
-            placeholder="MACT 1.0.0 (27) - Production - Runtime 1.0.0 - Update 56fb0f2a"
+            placeholder="MACT 1.0.0 (27) - Release 8 - Production - Runtime 1.0.0 - Update 56fb0f2a"
             value={diagnostic}
           />
         </div>
@@ -128,6 +128,7 @@ export function AppUpdatesClientTools({ latestUpdates, updates }: Props) {
           <div className="field-grid">
             <div className="field"><label>EAS Update ID</label><input name="easUpdateId" required /></div>
             <div className="field"><label>Update group ID optional</label><input name="updateGroupId" /></div>
+            <div className="field"><label>Reservation token optional</label><input name="reservationToken" /></div>
             <div className="field"><label>Channel</label><input name="channel" required /></div>
             <div className="field"><label>Branch optional</label><input name="branch" /></div>
             <div className="field"><label>Runtime version</label><input name="runtimeVersion" required /></div>

@@ -5,11 +5,13 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type SearchParams = {
   channel?: string;
+  release?: string;
   runtime?: string;
 };
 
 const releaseSelect = [
   "id",
+  "release_number",
   "eas_update_id",
   "update_group_id",
   "channel",
@@ -68,7 +70,7 @@ function diagnosticString(update: AppUpdateRow) {
   const version = update.app_version ? `MACT ${update.app_version}` : "MACT";
   const build = update.android_version_code ?? update.ios_build_number;
   const buildLabel = build ? ` (${build})` : "";
-  return `${version}${buildLabel} - ${formatChannel(update.channel)} - Runtime ${update.runtime_version} - Update ${shortId(update.eas_update_id)}`;
+  return `${version}${buildLabel} - Release ${update.release_number} - ${formatChannel(update.channel)} - Runtime ${update.runtime_version} - Update ${shortId(update.eas_update_id)}`;
 }
 
 function latestByChannelRuntime(updates: AppUpdateRow[]) {
@@ -116,6 +118,7 @@ async function getUpdates(params: SearchParams) {
 
   if (params.channel) query = query.eq("channel", params.channel.toLowerCase());
   if (params.runtime) query = query.eq("runtime_version", params.runtime);
+  if (params.release && /^\d+$/u.test(params.release)) query = query.eq("release_number", Number(params.release));
 
   const { data, error } = await query;
   if (error) {
@@ -178,9 +181,10 @@ export default async function EasUpdatesPage({ searchParams }: { searchParams?: 
         {summaries.map((update) => (
           <article className="card" key={update.channel}>
             <div className="section-heading">
-              <h2>{formatChannel(update.channel)}</h2>
+              <h2>Release {update.release_number}</h2>
               {update.is_rollback ? <Badge variant="danger">Rollback</Badge> : null}
             </div>
+            <p className="muted">{formatChannel(update.channel)}</p>
             <p className="copy-id">{shortId(update.eas_update_id)} - {update.eas_update_id}</p>
             <div className="review-meta">
               <Badge>{update.runtime_version}</Badge>
@@ -209,6 +213,13 @@ export default async function EasUpdatesPage({ searchParams }: { searchParams?: 
             <option value="">All runtime versions</option>
             {runtimeOptions.map((runtime) => <option key={runtime} value={runtime}>{runtime}</option>)}
           </select>
+          <input
+            aria-label="Release number"
+            inputMode="numeric"
+            name="release"
+            placeholder="Release #"
+            defaultValue={params.release ?? ""}
+          />
           <button className="button" type="submit">Filter</button>
           <Link className="button secondary" href="/releases/eas-updates">Reset</Link>
         </form>
@@ -218,6 +229,7 @@ export default async function EasUpdatesPage({ searchParams }: { searchParams?: 
             <thead>
               <tr>
                 <th>Published</th>
+                <th>Release</th>
                 <th>Channel</th>
                 <th>Message</th>
                 <th>Update ID</th>
@@ -233,6 +245,7 @@ export default async function EasUpdatesPage({ searchParams }: { searchParams?: 
               {updates.map((update) => (
                 <tr key={update.id}>
                   <td>{formatDateTime(update.published_at)}<br /><span className="muted">{formatAge(update.published_at)}</span></td>
+                  <td><strong>Release {update.release_number}</strong></td>
                   <td><Badge>{formatChannel(update.channel)}</Badge></td>
                   <td>{update.message ?? "No message"}</td>
                   <td><span className="copy-id">{shortId(update.eas_update_id)}<br />{update.eas_update_id}</span></td>
